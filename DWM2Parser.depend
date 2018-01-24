@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1516769745 source:d:\brandon\git\dwm2parser\main.cpp
+	<iostream>
+	<fstream>
+	<list>
+

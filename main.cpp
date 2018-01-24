@@ -9,7 +9,8 @@ using namespace std;
 
     unsigned char unknown[10];
 
-    unsigned char skill[4];
+    unsigned char skill[3];
+    unsigned char idk;
     unsigned char stat[6];
     unsigned char resist[27];
 
@@ -55,9 +56,33 @@ int main()
 	*/
 
     const int numUnknown = 10;
-    const int numSkill = 4;
+    const int numSkill = 3;
     const int numStat = 6;
     const int numResist = 27;
+
+
+	// This will store the monster families. Pointer to an array of c-string helps with fprintf later
+	char** monFamily = new char*[11];
+
+	// Initialize the c-strings to new char size 10, no family name is longer than that
+	for(int i = 0; i < 11; ++i)
+	{
+		*(monFamily + (sizeof(char*) * i) ) = new char[10];
+	}
+
+	// Declare the families.. no idea what the last one is?
+	*(monFamily + sizeof(char*) * 0) = "Slime";
+	*(monFamily + sizeof(char*) * 1) = "Dragon";
+	*(monFamily + sizeof(char*) * 2) = "Beast";
+	*(monFamily + sizeof(char*) * 3) = "Bird";
+	*(monFamily + sizeof(char*) * 4) = "Plant";
+	*(monFamily + sizeof(char*) * 5) = "Bug";
+	*(monFamily + sizeof(char*) * 6) = "Devil";
+	*(monFamily + sizeof(char*) * 7) = "Zombie";
+	*(monFamily + sizeof(char*) * 8) = "Material";
+	*(monFamily + sizeof(char*) * 9) = "Water";
+	*(monFamily + sizeof(char*) * 10) = "???";
+
 
 
     // This will store our enemy info
@@ -109,6 +134,8 @@ int main()
 
 			}
 
+			fread(&mon.idk, 1, 1, fin);
+
 			// Read stats
 			for( int stat = 0; stat < numStat; ++stat)
 			{
@@ -145,17 +172,35 @@ int main()
 
 		// Output to csv file for analysis
 
-		fprintf( fout, "u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, sk0, sk1, sk2, sk3, st0, st1, st2, st3, st4, st5, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26\n");
+		//
 
+		fprintf( fout, "index, u0, u1, Family, u3, u4, u5, u6, u7, MAX LVL, XP Type, sk0, sk1, sk2, idk, HP, MP, ATK, DEF, SPD, INT, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26\n");
+
+		int monCount = 1;
 		for( list<monster>::iterator it = monsterList.begin(); it != monsterList.end(); ++it)
 		{
 
 			// Replace 0x%x with %u if decimal is preferred.. TBD?
 
+			fprintf( fout, "%u,", monCount);
+
 			for( int unknown = 0; unknown < numUnknown; ++unknown )
 			{
 
-				fprintf( fout, "0x%x,", (*it).unknown[unknown]);
+				if(unknown == 2)
+				{
+
+					// monFamily is a pointer to an array of c-strings
+					// (*it).unknown[unknown] is the (value) of the family, cast it to int
+					// sizeof(char*) * value is the offset from monFamily which stores the relevant string
+
+					fprintf( fout, "%s,", *(monFamily+(sizeof(char*) * (int)(*it).unknown[unknown])) );
+
+				}
+				else
+				{
+					fprintf( fout, "%u,", (*it).unknown[unknown]);
+				}
 
 			}
 
@@ -165,6 +210,8 @@ int main()
 				fprintf( fout, "%u,", (*it).skill[skill]);
 
 			}
+
+			fprintf( fout, "%u,", (*it).idk );
 
 			for( int stat = 0; stat < numStat; ++stat)
 			{
@@ -181,6 +228,8 @@ int main()
 			}
 
 			fprintf( fout, "\n");
+
+			monCount++;
 
 		}
 
