@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <list>
+#include <string>
+#include <cstring>
 
 #define MON_BYTES 47
 
@@ -34,37 +36,38 @@ int main()
 
     // The ROM should have this file name and be moved into the folder with the .exe
     const char* IN_FILE = "DWM2_T.gbc";
+
+    // Output files
     const char* OUT_FILE_MON = "monster.csv";
     const char* OUT_FILE_SPELL = "spell.csv";
     const char* OUT_FILE_ENKA = "encounter.csv";
-
-
-    // Set up some constant data
-
-    const int numEncounters = 614;
-    const int encounterSize = 26;
-
-    const int addrMonster = 0xD4368;
-
 
     // This will store our enemy info
     std::list<monster> monsterList;
     std::list<spell> spellList;
     std::list<encounter> encounterList;
 
+
     FILE* fin;
     FILE* fout;
 
-
-    // Open file - Binary Mode is required
+    // Open file - Binary Mode is required for ROM
     fin = fopen( IN_FILE, "rb" );
+
+	if( fin == NULL )
+	{
+
+		cout << "File not open, exiting.." << endl;
+		return 0;
+
+	}
 
 
     // Try open monster output file
     fout = fopen ( OUT_FILE_MON, "w" );
 
     // If file open, parse monsters
-    if( fin != NULL && fout != NULL )
+    if( fout != NULL )
     {
 		parseMonsters(fin, fout, &monsterList);
     }
@@ -73,29 +76,29 @@ int main()
 	fclose(fout);
 
 
-	// If file open, parse spells
+	// If file opens, parse spells
 	fout = fopen( OUT_FILE_SPELL, "w" );
 
 	if( fin != NULL && fout != NULL )
     {
-		parseSpells(fin, fout, &spellList);
+		//parseSpells(fin, fout, &spellList);
     }
 
 	fclose(fout);
 
 
-	// If file open, parse encounters
+	// If file opens, parse encounters
 	fout = fopen( OUT_FILE_ENKA, "w" );
 
 	if( fin != NULL && fout != NULL )
     {
-		parseEncounters(fin, fout, &encounterList);
+		//parseEncounters(fin, fout, &encounterList);
     }
 
 	fclose(fout);
 
 
-    // Close file handles
+    // Close ROM file
     fclose(fin);
 
 
@@ -107,39 +110,23 @@ void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
 {
 
 	const int numMonsters = 313;
-    const int sizeMonster = 47;
 	const int addrMonster = 0xD4368;
 
-	const int numUnknown = 10;
-    const int numSkill = 3;
-    const int numStat = 6;
-    const int numResist = 27;
-
+	string families[11] = {"Slime", "Dragon", "Beast", "Bird", "Plant", "Bug",
+		"Devil", "Zombie", "Material", "Water", "Boss"};
 
 	// This will store the monster families. Pointer to an array of c-string helps with fprintf later
 	char** monFamily = new char*[11];
 
-	// Initialize the c-strings to new char size 10, no family name is longer than that
+	// Initialize the c-strings to new char size 10, no family name is longer than that..
+	// This feels kinda stupid. It works though..
 	for(int i = 0; i < 11; ++i)
 	{
-		*(monFamily + (sizeof(char*) * i) ) = new char[10];
-	}
 
-	// Declare the families.. no idea what the last one is?
-	{
-	*(monFamily + sizeof(char*) * 0) = "Slime";
-	*(monFamily + sizeof(char*) * 1) = "Dragon";
-	*(monFamily + sizeof(char*) * 2) = "Beast";
-	*(monFamily + sizeof(char*) * 3) = "Bird";
-	*(monFamily + sizeof(char*) * 4) = "Plant";
-	*(monFamily + sizeof(char*) * 5) = "Bug";
-	*(monFamily + sizeof(char*) * 6) = "Devil";
-	*(monFamily + sizeof(char*) * 7) = "Zombie";
-	*(monFamily + sizeof(char*) * 8) = "Material";
-	*(monFamily + sizeof(char*) * 9) = "Water";
-	*(monFamily + sizeof(char*) * 10) = "???";
-	}
+		*(monFamily + (sizeof(char*) * i) ) = new char[ 10 ];
+		std::strcpy( *(monFamily + (sizeof(char*) * i) ), families[i].c_str() );
 
+	}
 
 	// Go to monster address
 	fseek( fin, addrMonster, SEEK_SET);
@@ -193,13 +180,16 @@ void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
 
 		monCount++;
 
-
 	}
 
 }
 
 void parseEncounters( FILE* fin, FILE* fout, std::list<encounter>* encounterList)
 {
+
+	const int addrEncounter = 0xD008F;
+    const int numEncounters = 614;
+    const int encounterSize = 26;
 
 }
 
