@@ -2,17 +2,14 @@
 #include <fstream>
 #include <list>
 
+#define MON_BYTES 47
+
 using namespace std;
 
 
  typedef struct {                               // Create type for enemy stats to track
 
-    unsigned char unknown[10];
-
-    unsigned char skill[3];
-    unsigned char idk;
-    unsigned char stat[6];
-    unsigned char resist[27];
+    unsigned char data[MON_BYTES];
 
 } monster ;
 
@@ -27,6 +24,10 @@ typedef struct {
 
 } encounter ;
 
+// Declare functions, they're at the bottom of the file
+void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList);
+void parseEncounters( FILE* fin, FILE* fout, std::list<encounter>* encounterList);
+void parseSpells( FILE* fin, FILE* fout, std::list<spell>* spellList);
 
 int main()
 {
@@ -39,23 +40,77 @@ int main()
 
 
     // Set up some constant data
-    const int numMonsters = 313;
-    const int sizeMonster = 47;
 
     const int numEncounters = 614;
     const int encounterSize = 26;
 
-    const int addrEncounter = 0xD008F;
     const int addrMonster = 0xD4368;
 
-	// -- Might not actually use these --
-	/*
-    const int skillOffset = 10;
-    const int statOffset = 14;
-    const int resistOffset = 20;
-	*/
 
-    const int numUnknown = 10;
+    // This will store our enemy info
+    std::list<monster> monsterList;
+    std::list<spell> spellList;
+    std::list<encounter> encounterList;
+
+    FILE* fin;
+    FILE* fout;
+
+
+    // Open file - Binary Mode is required
+    fin = fopen( IN_FILE, "rb" );
+
+
+    // Try open monster output file
+    fout = fopen ( OUT_FILE_MON, "w" );
+
+    // If file open, parse monsters
+    if( fin != NULL && fout != NULL )
+    {
+		parseMonsters(fin, fout, &monsterList);
+    }
+
+	// Monsters are done, close output
+	fclose(fout);
+
+
+	// If file open, parse spells
+	fout = fopen( OUT_FILE_SPELL, "w" );
+
+	if( fin != NULL && fout != NULL )
+    {
+		parseSpells(fin, fout, &spellList);
+    }
+
+	fclose(fout);
+
+
+	// If file open, parse encounters
+	fout = fopen( OUT_FILE_ENKA, "w" );
+
+	if( fin != NULL && fout != NULL )
+    {
+		parseEncounters(fin, fout, &encounterList);
+    }
+
+	fclose(fout);
+
+
+    // Close file handles
+    fclose(fin);
+
+
+    return 0;
+}
+
+
+void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
+{
+
+	const int numMonsters = 313;
+    const int sizeMonster = 47;
+	const int addrMonster = 0xD4368;
+
+	const int numUnknown = 10;
     const int numSkill = 3;
     const int numStat = 6;
     const int numResist = 27;
@@ -71,6 +126,7 @@ int main()
 	}
 
 	// Declare the families.. no idea what the last one is?
+	{
 	*(monFamily + sizeof(char*) * 0) = "Slime";
 	*(monFamily + sizeof(char*) * 1) = "Dragon";
 	*(monFamily + sizeof(char*) * 2) = "Beast";
@@ -82,169 +138,72 @@ int main()
 	*(monFamily + sizeof(char*) * 8) = "Material";
 	*(monFamily + sizeof(char*) * 9) = "Water";
 	*(monFamily + sizeof(char*) * 10) = "???";
+	}
 
 
+	// Go to monster address
+	fseek( fin, addrMonster, SEEK_SET);
 
-    // This will store our enemy info
-    std::list<monster> monsterList;
-    std::list<spell> spellList;
-    std::list<encounter> encounterList;
+	// Loop through monsters
+	for ( int monsters = 0; monsters < numMonsters; ++monsters )
+	{
 
-    FILE* fin;
-    FILE* fout;
+		monster mon;
 
-
-    // Open file - Binary Mode is required
-    fin = fopen( IN_FILE, "rb");
-
-
-
-
-    // TODO: Put into functions?
-
-    // Try open monster output file
-    fout = fopen ( OUT_FILE_MON, "w");
-
-    // Check if files are open before looping
-    if( fin != NULL && fout != NULL )
-    {
-
-		// Go to monster address
-		fseek( fin, addrMonster, SEEK_SET);
-
-		// Loop through monsters
-		for ( int monsters = 0; monsters < numMonsters; ++monsters )
+		for( int i = 0; i < MON_BYTES; ++i)
 		{
+			fread(&mon.data[i], 1, 1, fin);
+		}
 
-			monster mon;
+		(*monsterList).push_back(mon);
 
-			// Read these bytes even though we don't know what they are
-			for( int unknown = 0; unknown < numUnknown; ++unknown )
+	}
+
+	// Output to csv file for analysis
+
+	// Resist headers taken from CT's monster resist sheet, see that for "full" details
+	fprintf( fout, "index, u0, u1, Family, u3, u4, u5, u6, u7, MAX LVL, XP Type,\
+			sk0, sk1, sk2, idk, HP, MP, ATK, DEF, SPD, INT, \
+			Blaze, Fireball, Bang, Infernos, Lightning, Icebolt, Surround, Sleep, Beat, RobMagic,\
+			Stopspell, Panic, Sap, Slow, Sacrifice, MegaMagic, FireAir, FrigidAir, PoisonAir,\
+			Pralyze, Curse, LureDance, DanceShut, MouthShut, RockThrow, GigaSlash, Geyser\n");
+
+	int monCount = 1;
+	for( list<monster>::iterator it = (*monsterList).begin(); it != (*monsterList).end(); ++it)
+	{
+
+		// Replace 0x%x with %u if decimal is preferred.. TBD?
+
+		fprintf( fout, "%u,", monCount);
+
+		for( int i = 0; i < MON_BYTES; ++i)
+		{
+			if(i == 2)
 			{
-
-				fread(&mon.unknown[unknown], 1, 1, fin);
-
+				fprintf( fout, "%s,", *(monFamily+(sizeof(char*) * (int)(*it).data[i])) );
 			}
-
-			// Read skills
-			for( int skill = 0; skill < numSkill; ++skill)
+			else
 			{
-
-				fread(&mon.skill[skill], 1, 1, fin);
-
+				fprintf( fout, "%u,", (*it).data[i]);
 			}
-
-			fread(&mon.idk, 1, 1, fin);
-
-			// Read stats
-			for( int stat = 0; stat < numStat; ++stat)
-			{
-
-				fread(&mon.stat[stat], 1, 1, fin);
-
-			}
-
-			// Read resists
-			for( int resist = 0; resist < numResist; ++resist)
-			{
-
-				fread(&mon.resist[resist], 1, 1, fin);
-
-			}
-
-
-			// DEBUG cout statements
-			/*
-			cout << "unknown0" << mon.unknown[0] << endl;
-			cout << "skill0" << mon.skill[0] << endl;
-			cout << "stat0" << mon.stat[0] << endl;
-			cout << "resist0" << mon.resist[0] << endl;
-
-			if(monsters == 0)
-				printf("skill2: %x \n", mon.skill[2]);
-			*/
-
-			monsterList.push_back(mon);
 
 		}
 
+		fprintf( fout, "\n");
+
+		monCount++;
 
 
-		// Output to csv file for analysis
+	}
 
-		//
+}
 
-		fprintf( fout, "index, u0, u1, Family, u3, u4, u5, u6, u7, MAX LVL, XP Type, sk0, sk1, sk2, idk, HP, MP, ATK, DEF, SPD, INT, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26\n");
+void parseEncounters( FILE* fin, FILE* fout, std::list<encounter>* encounterList)
+{
 
-		int monCount = 1;
-		for( list<monster>::iterator it = monsterList.begin(); it != monsterList.end(); ++it)
-		{
+}
 
-			// Replace 0x%x with %u if decimal is preferred.. TBD?
+void parseSpells( FILE* fin, FILE* fout, std::list<spell>* spellList)
+{
 
-			fprintf( fout, "%u,", monCount);
-
-			for( int unknown = 0; unknown < numUnknown; ++unknown )
-			{
-
-				if(unknown == 2)
-				{
-
-					// monFamily is a pointer to an array of c-strings
-					// (*it).unknown[unknown] is the (value) of the family, cast it to int
-					// sizeof(char*) * value is the offset from monFamily which stores the relevant string
-
-					fprintf( fout, "%s,", *(monFamily+(sizeof(char*) * (int)(*it).unknown[unknown])) );
-
-				}
-				else
-				{
-					fprintf( fout, "%u,", (*it).unknown[unknown]);
-				}
-
-			}
-
-			for( int skill = 0; skill < numSkill; ++skill)
-			{
-
-				fprintf( fout, "%u,", (*it).skill[skill]);
-
-			}
-
-			fprintf( fout, "%u,", (*it).idk );
-
-			for( int stat = 0; stat < numStat; ++stat)
-			{
-
-				fprintf( fout, "%u,", (*it).stat[stat]);
-
-			}
-
-			for( int resist = 0; resist < numResist; ++resist)
-			{
-
-				fprintf( fout, "%u,", (*it).resist[resist]);
-
-			}
-
-			fprintf( fout, "\n");
-
-			monCount++;
-
-		}
-
-
-    }
-
-	// Monsters are done, close output
-	fclose(fout);
-
-
-
-    // Close file handles
-    fclose(fin);
-
-
-
-    return 0;
 }
