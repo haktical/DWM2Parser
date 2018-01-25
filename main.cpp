@@ -5,6 +5,7 @@
 #include <cstring>
 
 #define MON_BYTES 47
+#define ENKA_BYTES 26
 
 using namespace std;
 
@@ -23,6 +24,7 @@ typedef struct {
 
 typedef struct {
 
+	unsigned char data[ENKA_BYTES];
 
 } encounter ;
 
@@ -92,7 +94,7 @@ int main()
 
 	if( fin != NULL && fout != NULL )
     {
-		//parseEncounters(fin, fout, &encounterList);
+		parseEncounters(fin, fout, &encounterList);
     }
 
 	fclose(fout);
@@ -115,19 +117,6 @@ void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
 	string families[11] = {"Slime", "Dragon", "Beast", "Bird", "Plant", "Bug",
 		"Devil", "Zombie", "Material", "Water", "Boss"};
 
-	// This will store the monster families. Pointer to an array of c-string helps with fprintf later
-	char** monFamily = new char*[11];
-
-	// Initialize the c-strings to new char size 10, no family name is longer than that..
-	// This feels kinda stupid. It works though..
-	for(int i = 0; i < 11; ++i)
-	{
-
-		*(monFamily + (sizeof(char*) * i) ) = new char[ 10 ];
-		std::strcpy( *(monFamily + (sizeof(char*) * i) ), families[i].c_str() );
-
-	}
-
 	// Go to monster address
 	fseek( fin, addrMonster, SEEK_SET);
 
@@ -149,13 +138,14 @@ void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
 	// Output to csv file for analysis
 
 	// Resist headers taken from CT's monster resist sheet, see that for "full" details
-	fprintf( fout, "index, u0, u1, Family, u3, u4, u5, u6, u7, MAX LVL, XP Type,\
-			sk0, sk1, sk2, idk, HP, MP, ATK, DEF, SPD, INT, \
-			Blaze, Fireball, Bang, Infernos, Lightning, Icebolt, Surround, Sleep, Beat, RobMagic,\
-			Stopspell, Panic, Sap, Slow, Sacrifice, MegaMagic, FireAir, FrigidAir, PoisonAir,\
-			Pralyze, Curse, LureDance, DanceShut, MouthShut, RockThrow, GigaSlash, Geyser\n");
+	fprintf( fout, "index, u0, u1, Family, u3, u4, u5, u6, u7, MAX LVL, XP Type, "
+			"sk0, sk1, sk2, idk, HP, MP, ATK, DEF, SPD, INT,"
+			"Blaze, Fireball, Bang, Infernos, Lightning, Icebolt, Surround, Sleep, Beat, RobMagic, "
+			"Stopspell, Panic, Sap, Slow, Sacrifice, MegaMagic, FireAir, FrigidAir, PoisonAir, "
+			"Paralyze, Curse, LureDance, DanceShut, MouthShut, RockThrow, GigaSlash, Geyser\n");
 
 	int monCount = 1;
+
 	for( list<monster>::iterator it = (*monsterList).begin(); it != (*monsterList).end(); ++it)
 	{
 
@@ -167,11 +157,15 @@ void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
 		{
 			if(i == 2)
 			{
-				fprintf( fout, "%s,", *(monFamily+(sizeof(char*) * (int)(*it).data[i])) );
+				fprintf( fout, "%s,", families[(int)(*it).data[i]].c_str() );
+			}
+			else if(i != MON_BYTES - 1)
+			{
+				fprintf( fout, "%u,", (*it).data[i]);
 			}
 			else
 			{
-				fprintf( fout, "%u,", (*it).data[i]);
+				fprintf( fout, "%u", (*it).data[i]);
 			}
 
 		}
@@ -189,7 +183,47 @@ void parseEncounters( FILE* fin, FILE* fout, std::list<encounter>* encounterList
 
 	const int addrEncounter = 0xD008F;
     const int numEncounters = 614;
-    const int encounterSize = 26;
+
+	// Go to encounter address
+	fseek( fin, addrEncounter, SEEK_SET);
+
+	// Loop through encounters
+	for ( int encounters = 0; encounters < numEncounters; ++encounters )
+	{
+
+		encounter enka;
+
+		for( int i = 0; i < ENKA_BYTES; ++i)
+		{
+			fread(&enka.data[i], 1, 1, fin);
+		}
+
+		(*encounterList).push_back(enka);
+
+	}
+
+	// Need to determine encounter data stored
+	fprintf( fout, "index, b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13"
+			"b14, b15, b16, b17, b18, b19, b20, b21, b22, b23, b24, b25\n");
+
+	int enkaCount = 1;
+	for( list<encounter>::iterator it = (*encounterList).begin(); it != (*encounterList).end(); ++it)
+	{
+
+		// Replace 0x%x with %u if decimal is preferred.. TBD?
+
+		fprintf( fout, "%u,", enkaCount);
+
+		for( int i = 0; i < ENKA_BYTES; ++i)
+		{
+			fprintf( fout, "%u,", (*it).data[i]);
+		}
+
+		fprintf( fout, "\n");
+
+		enkaCount++;
+
+	}
 
 }
 
