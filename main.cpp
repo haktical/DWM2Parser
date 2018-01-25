@@ -203,8 +203,8 @@ void parseEncounters( FILE* fin, FILE* fout, std::list<encounter>* encounterList
 	}
 
 	// Need to determine encounter data stored
-	fprintf( fout, "index, b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13"
-			"b14, b15, b16, b17, b18, b19, b20, b21, b22, b23, b24, b25\n");
+	fprintf( fout, "index, Monster LB, Monster UB, Skill 1, Skill 2, Skill 3, Skill 4, XP LB, XP UB, ??, Join rate?, HP LB, HP UB, MP LB, MP UB,"
+			"ATK LB, ATK UB, DEF LB, DEF UB, AGL LB, AGL UB, INT LB, INT UB, personality b1?, personality b2?, personality b3?, personality b4?\n");
 
 	int enkaCount = 1;
 	for( list<encounter>::iterator it = (*encounterList).begin(); it != (*encounterList).end(); ++it)
@@ -216,7 +216,14 @@ void parseEncounters( FILE* fin, FILE* fout, std::list<encounter>* encounterList
 
 		for( int i = 0; i < ENKA_BYTES; ++i)
 		{
-			fprintf( fout, "%u,", (*it).data[i]);
+			if( i != ENKA_BYTES - 1 )
+			{
+				fprintf( fout, "%u,", (*it).data[i]);
+			}
+			else
+			{
+				fprintf( fout, "%u", (*it).data[i]);
+			}
 		}
 
 		fprintf( fout, "\n");
