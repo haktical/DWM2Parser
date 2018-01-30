@@ -9,40 +9,52 @@
 
 using namespace std;
 
+// Declare structs for the stuff we're looking for..
+// Right now, only contains arrays of bytes. Might add data later..
 
- typedef struct {                               // Create type for enemy stats to track
+ typedef struct {                       // Create type for enemy stats to track
 
     unsigned char data[MON_BYTES];
 
 } monster ;
 
 
-typedef struct {
+typedef struct {						// Type for Spells
 
 } spell ;
 
 
-typedef struct {
+typedef struct {						// Type for encounters
 
 	unsigned char data[ENKA_BYTES];
 
 } encounter ;
 
+
 // Declare functions, they're at the bottom of the file
+void parseCobi();
+void parseTara();
 void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList);
 void parseEncounters( FILE* fin, FILE* fout, std::list<encounter>* encounterList);
 void parseSpells( FILE* fin, FILE* fout, std::list<spell>* spellList);
+
 
 int main()
 {
 
     // The ROM should have this file name and be moved into the folder with the .exe
-    const char* IN_FILE = "DWM2_T.gbc";
+    const char* IN_FILE_T = "DWM2_T.gbc";
+    const char* IN_FILE_C = "DWM2_C.gbc";
 
     // Output files
-    const char* OUT_FILE_MON = "monster.csv";
-    const char* OUT_FILE_SPELL = "spell.csv";
-    const char* OUT_FILE_ENKA = "encounter.csv";
+    const char* OUT_FILE_MON_T = "monster_t.csv";
+    const char* OUT_FILE_SPELL_T = "spell_t.csv";
+    const char* OUT_FILE_ENKA_T = "encounter_t.csv";
+
+    const char* OUT_FILE_MON_C = "monster_c.csv";
+    const char* OUT_FILE_SPELL_C = "spell_c.csv";
+    const char* OUT_FILE_ENKA_C = "encounter_c.csv";
+
 
     // This will store our enemy info
     std::list<monster> monsterList;
@@ -50,62 +62,116 @@ int main()
     std::list<encounter> encounterList;
 
 
-    FILE* fin;
+    FILE* fin_t;
+    FILE* fin_c;
     FILE* fout;
 
-    // Open file - Binary Mode is required for ROM
-    fin = fopen( IN_FILE, "rb" );
 
-	if( fin == NULL )
+    // Open file - Binary Mode is required for ROM
+    fin_t = fopen( IN_FILE_T, "rb" );
+    fin_c = fopen( IN_FILE_C, "rb" );
+
+
+	// Start with Tara's
+	if( fin_t != NULL)
+	{
+		cout << "Tara's available, parsing..." << endl;
+
+		// Try open monster output file
+		fout = fopen ( OUT_FILE_MON_T, "w" );
+
+		// If file open, parse monsters
+		if( fout != NULL )
+		{
+			parseMonsters(fin_t, fout, &monsterList);
+		}
+
+		// Monsters are done, close output
+		fclose(fout);
+
+
+		// If file opens, parse spells
+		fout = fopen( OUT_FILE_SPELL_T, "w" );
+
+		if( fout != NULL )
+		{
+			//parseSpells(fin_t, fout, &spellList);
+		}
+
+		fclose(fout);
+
+
+		// If file opens, parse encounters
+		fout = fopen( OUT_FILE_ENKA_T, "w" );
+
+		if( fout != NULL )
+		{
+			parseEncounters(fin_t, fout, &encounterList);
+		}
+
+		fclose(fout);
+
+
+		// Close ROM file
+		fclose(fin_t);
+
+	}
+
+	// Re-initialize variables to clear them
+	monsterList.clear();
+	spellList.clear();
+	encounterList.clear();
+
+	// Parse Cobi if available
+	if( fin_c != NULL)
 	{
 
-		cout << "File not open, exiting.." << endl;
-		return 0;
+		cout << "Cobi's available, parsing..." << endl;
+
+		// Try open monster output file
+		fout = fopen ( OUT_FILE_MON_C, "w" );
+
+		// If file open, parse monsters
+		if( fout != NULL )
+		{
+			parseMonsters(fin_c, fout, &monsterList);
+		}
+
+		// Monsters are done, close output
+		fclose(fout);
+
+
+		// If file opens, parse spells
+		fout = fopen( OUT_FILE_SPELL_C, "w" );
+
+		if( fout != NULL )
+		{
+			//parseSpells(fin_c, fout, &spellList);
+		}
+
+		fclose(fout);
+
+
+		// If file opens, parse encounters
+		fout = fopen( OUT_FILE_ENKA_C, "w" );
+
+		if( fout != NULL )
+		{
+			parseEncounters(fin_c, fout, &encounterList);
+		}
+
+		fclose(fout);
+
+
+		// Close ROM file
+		fclose(fin_c);
 
 	}
 
 
-    // Try open monster output file
-    fout = fopen ( OUT_FILE_MON, "w" );
-
-    // If file open, parse monsters
-    if( fout != NULL )
-    {
-		parseMonsters(fin, fout, &monsterList);
-    }
-
-	// Monsters are done, close output
-	fclose(fout);
-
-
-	// If file opens, parse spells
-	fout = fopen( OUT_FILE_SPELL, "w" );
-
-	if( fin != NULL && fout != NULL )
-    {
-		//parseSpells(fin, fout, &spellList);
-    }
-
-	fclose(fout);
-
-
-	// If file opens, parse encounters
-	fout = fopen( OUT_FILE_ENKA, "w" );
-
-	if( fin != NULL && fout != NULL )
-    {
-		parseEncounters(fin, fout, &encounterList);
-    }
-
-	fclose(fout);
-
-
-    // Close ROM file
-    fclose(fin);
-
-
     return 0;
 }
+
 
 
 void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
@@ -145,32 +211,42 @@ void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
 			"Paralyze, Curse, LureDance, DanceShut, MouthShut, RockThrow, GigaSlash, Geyser\n");
 
 	int monCount = 1;
+	int numSkipped = 0;
 
 	for( list<monster>::iterator it = (*monsterList).begin(); it != (*monsterList).end(); ++it)
 	{
 
-		// Replace 0x%x with %u if decimal is preferred.. TBD?
-
-		fprintf( fout, "%u,", monCount);
-
-		for( int i = 0; i < MON_BYTES; ++i)
+		// Some monsters are junk I guess? Don't pull them?
+		if(monCount == 27)
 		{
-			if(i == 2)
+			numSkipped++;
+		}
+		else
+		{
+
+			fprintf( fout, "%u,", monCount-numSkipped );
+
+			for( int i = 0; i < MON_BYTES; ++i)
 			{
-				fprintf( fout, "%s,", families[(int)(*it).data[i]].c_str() );
+
+					if(i == 2)
+					{
+						fprintf( fout, "%s,", families[(int)(*it).data[i]].c_str() );
+					}
+					else if(i != MON_BYTES - 1)
+					{
+						fprintf( fout, "%u,", (*it).data[i]);
+					}
+					else
+					{
+						fprintf( fout, "%u", (*it).data[i]);
+					}
+
 			}
-			else if(i != MON_BYTES - 1)
-			{
-				fprintf( fout, "%u,", (*it).data[i]);
-			}
-			else
-			{
-				fprintf( fout, "%u", (*it).data[i]);
-			}
+
+			fprintf( fout, "\n");
 
 		}
-
-		fprintf( fout, "\n");
 
 		monCount++;
 
