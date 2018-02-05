@@ -1,2 +1,5 @@
 # ROM
 *.gbc
+*.csv
+bin/*
+bin

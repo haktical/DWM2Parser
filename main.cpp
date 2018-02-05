@@ -180,6 +180,13 @@ void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
 	const int numMonsters = 313;
 	const int addrMonster = 0xD4368;
 
+	// Okay, this is a second monster output file
+	// Monsters seem to have 2 IDs, the second is from SRAM?
+	// THIS second output has monster IDs as referenced in the ENCOUNTER table
+	const char* OUT_FILE_MONSTER_T_2 = "monsters_t_2.csv";
+
+	FILE* fout2 = fopen( OUT_FILE_MONSTER_T_2, "w" );
+
 	string families[11] = {"Slime", "Dragon", "Beast", "Bird", "Plant", "Bug",
 		"Devil", "Zombie", "Material", "Water", "Boss"};
 
@@ -204,51 +211,92 @@ void parseMonsters( FILE* fin, FILE* fout, std::list<monster>* monsterList)
 	// Output to csv file for analysis
 
 	// Resist headers taken from CT's monster resist sheet, see that for "full" details
+	// The u# columns are bytes where I don't know what they represent
+	// Resist headings only list 1 resist each, but some are series of resists
 	fprintf( fout, "index, u0, u1, Family, u3, u4, u5, u6, u7, MAX LVL, XP Type, "
 			"sk0, sk1, sk2, idk, HP, MP, ATK, DEF, SPD, INT,"
 			"Blaze, Fireball, Bang, Infernos, Lightning, Icebolt, Surround, Sleep, Beat, RobMagic, "
 			"Stopspell, Panic, Sap, Slow, Sacrifice, MegaMagic, FireAir, FrigidAir, PoisonAir, "
 			"Paralyze, Curse, LureDance, DanceShut, MouthShut, RockThrow, GigaSlash, Geyser\n");
 
-	int monCount = 1;
-	int numSkipped = 0;
+	// Start these at 1 for readability
+	// monCount1 is for the monster table directly
+	// monCount2 is for the version with "filler" used in enka table
+	int monCount1 = 1;
+	int monCount2 = 1;
+
+	// I could probably find a better way to do this..
+	// The only thing we skip is Butch anyway..
+	int numSkipped1 = 0;
 
 	for( list<monster>::iterator it = (*monsterList).begin(); it != (*monsterList).end(); ++it)
 	{
 
-		// Some monsters are junk I guess? Don't pull them?
-		if(monCount == 27)
+		// This is a list of "junk"
+		// If we use these lines as "fill" then IDs match up with encounter table
+		while(
+				(monCount2 > 0x1B && monCount2 < 0x24) ||
+				(monCount2 > 0x42 && monCount2 < 0x47) ||
+				(monCount2 > 0x66 && monCount2 < 0x6A) ||
+				(monCount2 > 0x84 && monCount2 < 0x8D) ||
+				(monCount2 > 0xA7 && monCount2 < 0xB0) ||
+				(monCount2 > 0xC9 && monCount2 < 0xD3) ||
+				(monCount2 > 0xF0 && monCount2 < 0xF6) ||
+				(monCount2 > 0x110 && monCount2 < 0x119) ||
+				(monCount2 > 0x138 && monCount2 < 0x13C) ||
+				(monCount2 > 0x15B && monCount2 < 0x15F)
+			  )
 		{
-			numSkipped++;
+			// Just output a number here.. no data to go with it
+			// These lines are just filler so encounter table IDs match up
+			fprintf( fout2, "%u\n", monCount2 );
+			monCount2++;
 		}
+
+		// This is Butch. He.. doesn't count?
+		// This is mostly so the IDs match up with other tables e.g. DQRTA data set
+		if(monCount1 == 27)
+		{
+			numSkipped1++;
+		}
+		// This is outputting monster data
 		else
 		{
 
-			fprintf( fout, "%u,", monCount-numSkipped );
+			fprintf( fout, "%u,", monCount1-numSkipped1 );
+			fprintf( fout2, "%u,", monCount2 );
 
 			for( int i = 0; i < MON_BYTES; ++i)
 			{
 
+					// Parse family from the string array
 					if(i == 2)
 					{
 						fprintf( fout, "%s,", families[(int)(*it).data[i]].c_str() );
+						fprintf( fout2, "%s,", families[(int)(*it).data[i]].c_str() );
 					}
 					else if(i != MON_BYTES - 1)
 					{
 						fprintf( fout, "%u,", (*it).data[i]);
+						fprintf( fout2, "%u,", (*it).data[i]);
 					}
+					// Don't put the comma on the last one..
 					else
 					{
 						fprintf( fout, "%u", (*it).data[i]);
+						fprintf( fout2, "%u", (*it).data[i]);
 					}
 
 			}
 
+			// New line
 			fprintf( fout, "\n");
+			fprintf( fout2, "\n");
 
 		}
 
-		monCount++;
+		monCount1++;
+		monCount2++;
 
 	}
 
